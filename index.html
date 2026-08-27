@@ -2,19 +2,337 @@
 <html lang="es">
     <head>
         <meta charset="UTF-8" />
-        <title>Simulación SPH - PixiJS</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Simulación de Fluidos SPH · PixiJS</title>
         <style>
+            :root {
+                --bg: #0f1420;
+                --panel: rgba(20, 26, 40, 0.92);
+                --panel-border: #2a3550;
+                --accent: #35a7ff;
+                --accent-2: #2b7fd0;
+                --text: #dfe7f5;
+                --muted: #8a97b5;
+                --danger: #d9534f;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
             body {
                 margin: 0;
                 overflow: hidden;
-                background-color: #1a1a1a;
+                background-color: var(--bg);
+                font-family: "Segoe UI", system-ui, sans-serif;
+                color: var(--text);
             }
-            canvas {
+
+            #canvas-host canvas {
                 display: block;
+                position: fixed;
+                inset: 0;
+            }
+
+            /* ---------- Panel de parámetros (izquierda) ---------- */
+            #panel {
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                width: 300px;
+                max-height: calc(100vh - 32px);
+                overflow-y: auto;
+                background: var(--panel);
+                border: 1px solid var(--panel-border);
+                border-radius: 12px;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+                font-size: 13px;
+                z-index: 10;
+                user-select: none;
+            }
+
+            #panel.collapsed .panel-body {
+                display: none;
+            }
+
+            .panel-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 14px;
+                border-bottom: 1px solid var(--panel-border);
+                position: sticky;
+                top: 0;
+                background: var(--panel);
+                border-radius: 12px 12px 0 0;
+            }
+
+            .panel-title {
+                font-weight: 600;
+                font-size: 14px;
+            }
+
+            .panel-body {
+                padding: 12px 14px 16px;
+            }
+
+            .section-title {
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                font-size: 11px;
+                color: var(--muted);
+                margin: 14px 0 8px;
+                border-top: 1px solid var(--panel-border);
+                padding-top: 12px;
+            }
+            .section-title:first-child {
+                border-top: none;
+                padding-top: 0;
+                margin-top: 0;
+            }
+
+            /* ---------- Campos ---------- */
+            .field {
+                margin-bottom: 10px;
+            }
+
+            .field-head {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+            }
+
+            .field-label {
+                color: var(--muted);
+                font-size: 12px;
+            }
+
+            .field-value {
+                font-variant-numeric: tabular-nums;
+                color: var(--accent);
+                font-size: 12px;
+            }
+
+            input[type="range"] {
+                width: 100%;
+                margin: 6px 0 0;
+                accent-color: var(--accent);
+                cursor: pointer;
+            }
+
+            .material-select,
+            .text-input {
+                width: 100%;
+                padding: 7px 9px;
+                background: #0c1220;
+                border: 1px solid var(--panel-border);
+                border-radius: 7px;
+                color: var(--text);
+                font-size: 13px;
+                margin-bottom: 8px;
+            }
+
+            .color-input {
+                width: 100%;
+                height: 34px;
+                padding: 2px;
+                background: #0c1220;
+                border: 1px solid var(--panel-border);
+                border-radius: 7px;
+                cursor: pointer;
+            }
+
+            /* ---------- Botones ---------- */
+            .btn-row {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 8px;
+            }
+
+            .btn {
+                flex: 1;
+                padding: 7px 6px;
+                background: #1a2338;
+                border: 1px solid var(--panel-border);
+                border-radius: 7px;
+                color: var(--text);
+                font-size: 12px;
+                cursor: pointer;
+                transition: background 0.15s, border-color 0.15s;
+            }
+            .btn:hover {
+                background: #23304d;
+            }
+            .btn.wide {
+                flex-basis: 100%;
+            }
+            .btn.danger:hover {
+                background: var(--danger);
+                border-color: var(--danger);
+            }
+            .btn.active {
+                background: var(--accent-2);
+                border-color: var(--accent);
+                color: #fff;
+            }
+
+            .icon-btn {
+                width: 26px;
+                height: 26px;
+                background: #1a2338;
+                border: 1px solid var(--panel-border);
+                border-radius: 6px;
+                color: var(--text);
+                cursor: pointer;
+                font-size: 16px;
+                line-height: 1;
+            }
+            .icon-btn:hover {
+                background: #23304d;
+            }
+
+            .hint {
+                margin-top: 12px;
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+            }
+
+            /* ---------- Barras flotantes (arriba / abajo, centradas) ---------- */
+            .float-bar {
+                position: fixed;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 12px;
+                background: var(--panel);
+                border: 1px solid var(--panel-border);
+                border-radius: 12px;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+                z-index: 10;
+                user-select: none;
+                max-width: calc(100vw - 32px);
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            #topbar {
+                top: 16px;
+            }
+            #toolbar {
+                bottom: 16px;
+            }
+
+            .bar-group {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .bar-sep {
+                width: 1px;
+                align-self: stretch;
+                background: var(--panel-border);
+                margin: 2px 2px;
+            }
+
+            .bar-label {
+                color: var(--muted);
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .bar-readout {
+                font-variant-numeric: tabular-nums;
+                color: var(--accent);
+                font-size: 12px;
+                min-width: 48px;
+                text-align: right;
+            }
+
+            /* Botones compactos de transporte. */
+            .bar-btn {
+                width: 32px;
+                height: 30px;
+                background: #1a2338;
+                border: 1px solid var(--panel-border);
+                border-radius: 7px;
+                color: var(--text);
+                font-size: 14px;
+                cursor: pointer;
+                transition: background 0.15s, border-color 0.15s;
+            }
+            .bar-btn:hover {
+                background: #23304d;
+            }
+            .bar-btn.active {
+                background: var(--accent-2);
+                border-color: var(--accent);
+                color: #fff;
+            }
+
+            /* Botones de herramienta (seleccionables). */
+            .tool-btn {
+                padding: 7px 12px;
+                background: #1a2338;
+                border: 1px solid var(--panel-border);
+                border-radius: 7px;
+                color: var(--text);
+                font-size: 12px;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: background 0.15s, border-color 0.15s;
+            }
+            .tool-btn:hover {
+                background: #23304d;
+            }
+            .tool-btn.active {
+                background: var(--accent-2);
+                border-color: var(--accent);
+                color: #fff;
+            }
+            .tool-btn.danger:hover {
+                background: var(--danger);
+                border-color: var(--danger);
+            }
+
+            .bar-select {
+                padding: 6px 8px;
+                background: #0c1220;
+                border: 1px solid var(--panel-border);
+                border-radius: 7px;
+                color: var(--text);
+                font-size: 12px;
+                cursor: pointer;
+            }
+
+            .bar-slider {
+                width: 120px;
+                accent-color: var(--accent);
+                cursor: pointer;
+            }
+
+            /* Scrollbar sutil */
+            #panel::-webkit-scrollbar {
+                width: 8px;
+            }
+            #panel::-webkit-scrollbar-thumb {
+                background: #2a3550;
+                border-radius: 4px;
             }
         </style>
     </head>
     <body>
+        <div id="canvas-host"></div>
+        <div id="panel"></div>
+        <div id="topbar" class="float-bar"></div>
+        <div id="toolbar" class="float-bar"></div>
+
         <script src="https://pixijs.download/release/pixi.js"></script>
         <script type="module" src="main.js"></script>
     </body>
