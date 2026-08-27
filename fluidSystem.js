@@ -12,6 +12,8 @@ export class FluidSystem {
         this.targetDensity = 1.0; // Densidad de reposo
         this.pressureMultiplier = 10; // Define qué tan violento es el rechazo
         this.viscosityMultiplier = 0.05;
+
+        this.mousePos = { x: -1000, y: -1000 };
     }
 
     spawnParticles(count) {
@@ -21,6 +23,16 @@ export class FluidSystem {
             let py = Math.random() * 200 + 100;
             this.particles.push(new Particle(px, py, this.texture, this.stage));
         }
+    }
+
+    // Destruye todas las partículas actuales y crea "count" nuevas.
+    // Útil para el panel de control (slider de cantidad de partículas).
+    respawn(count) {
+        for (let p of this.particles) {
+            p.destroy();
+        }
+        this.particles = [];
+        this.spawnParticles(count);
     }
 
     update(deltaTime) {
@@ -41,6 +53,24 @@ export class FluidSystem {
         for (let p of this.particles) {
             this.integrate(p, deltaTime);
             p.updateVisuals();
+            p.updateColorByDensity(this.targetDensity);
+        }
+
+        // Mostrar radar solo en la partícula 0 si el checkbox está activo
+        const debugToggle = document.getElementById("debugRadar");
+        if (this.particles.length > 0) {
+            const p = this.particles[0];
+            p.radarGraphic.visible = debugToggle && debugToggle.checked;
+            if (p.radarGraphic.visible) {
+                p.radarGraphic.clear();
+                p.radarGraphic.setStrokeStyle({
+                    width: 1,
+                    color: 0xffffff,
+                    alpha: 0.5,
+                });
+                p.radarGraphic.circle(0, 0, this.smoothingRadius);
+                p.radarGraphic.stroke();
+            }
         }
     }
 
@@ -76,10 +106,7 @@ export class FluidSystem {
     calculateDensity(particula) {
         // La partícula siempre se influencia a sí misma (distancia 0)
         // Por lo tanto, empezamos sumando su propio valor en el centro del Kernel
-        particula.density = this.smoothingKernelDerivative(
-            this.smoothingRadius,
-            0,
-        );
+        particula.density = this.smoothingKernel(this.smoothingRadius, 0);
 
         for (let vecina of this.particles) {
             // Evitamos que se calcule contra sí misma
@@ -91,7 +118,7 @@ export class FluidSystem {
             const distancia = Math.sqrt(difX * difX + difY * difY);
 
             // Pasamos la distancia por nuestra función matemática
-            const influencia = this.smoothingKernelDerivative(
+            const influencia = this.smoothingKernel(
                 this.smoothingRadius,
                 distancia,
             );
@@ -107,8 +134,10 @@ export class FluidSystem {
         particula.force.y = this.gravity;
 
         // Ecuación de Estado para la presión
+        // Usamos Math.max para asegurar que la presión nunca sea negativa.
         particula.pressure =
-            (particula.density - this.targetDensity) * this.pressureMultiplier;
+            Math.max(0, particula.density - this.targetDensity) *
+            this.pressureMultiplier;
 
         let presionX = 0;
         let presionY = 0;
@@ -128,7 +157,7 @@ export class FluidSystem {
 
                 // --- FUERZA DE PRESIÓN ---
                 vecina.pressure =
-                    (vecina.density - this.targetDensity) *
+                    Math.max(0, vecina.density - this.targetDensity) *
                     this.pressureMultiplier;
                 const presionCompartida =
                     (particula.pressure + vecina.pressure) / 2;
@@ -138,7 +167,7 @@ export class FluidSystem {
                 );
 
                 const fuerzaPresion =
-                    (presionCompartida * influenciaPendiente) / vecina.density;
+                    -(presionCompartida * influenciaPendiente) / vecina.density;
                 presionX += dirX * fuerzaPresion;
                 presionY += dirY * fuerzaPresion;
 
@@ -160,6 +189,20 @@ export class FluidSystem {
         // Sumamos todas las fuerzas al resultado final de la partícula
         particula.force.x += presionX + viscosidadX;
         particula.force.y += presionY + viscosidadY;
+
+        // Repulsión del mouse
+        const difMouseX = particula.position.x - this.mousePos.x;
+        const difMouseY = particula.position.y - this.mousePos.y;
+        const distMouse = Math.sqrt(
+            difMouseX * difMouseX + difMouseY * difMouseY,
+        );
+        const radioMouse = 100;
+
+        if (distMouse < radioMouse && distMouse > 0) {
+            const fuerzaFuga = (radioMouse - distMouse) * 50;
+            particula.force.x += (difMouseX / distMouse) * fuerzaFuga;
+            particula.force.y += (difMouseY / distMouse) * fuerzaFuga;
+        }
     }
 
     integrate(p, dt) {
@@ -190,6 +233,27 @@ export class FluidSystem {
         if (p.position.y > bounds.height) {
             p.position.y = bounds.height;
             p.velocity.y *= damping;
+        }
+
+        // Colisión con obstáculo central
+        const centroX = bounds.width / 2;
+        const centroY = bounds.height / 2;
+        const radioObstaculo = 80;
+
+        const difObsX = p.position.x - centroX;
+        const difObsY = p.position.y - centroY;
+        const distObs = Math.sqrt(difObsX * difObsX + difObsY * difObsY);
+
+        if (distObs < radioObstaculo && distObs > 0) {
+            // Empujar hacia el borde del obstáculo
+            const normalX = difObsX / distObs;
+            const normalY = difObsY / distObs;
+            p.position.x = centroX + normalX * radioObstaculo;
+
+            // Invertir velocidad perdiendo energía (fricción)
+            const dot = p.velocity.x * normalX + p.velocity.y * normalY;
+            p.velocity.x -= 2 * dot * normalX * 0.5;
+            p.velocity.y -= 2 * dot * normalY * 0.5;
         }
     }
 }

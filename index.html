@@ -8,13 +8,146 @@
                 margin: 0;
                 overflow: hidden;
                 background-color: #1a1a1a;
+                font-family: "Segoe UI", Arial, sans-serif;
             }
             canvas {
                 display: block;
             }
+
+            #panel {
+                position: fixed;
+                top: 16px;
+                right: 16px;
+                width: 260px;
+                background: rgba(20, 20, 25, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 14px 16px;
+                color: #eee;
+                backdrop-filter: blur(4px);
+                z-index: 10;
+            }
+
+            #panel h3 {
+                margin: 0 0 10px 0;
+                font-size: 15px;
+                font-weight: 600;
+                color: #66ccff;
+            }
+
+            #panel label {
+                display: flex;
+                justify-content: space-between;
+                font-size: 12px;
+                margin-top: 10px;
+                color: #ccc;
+            }
+
+            #panel input[type="range"] {
+                width: 100%;
+                accent-color: #66ccff;
+            }
+
+            #panel hr {
+                border: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.15);
+                margin: 12px 0;
+            }
+
+            #panel .buttons {
+                display: flex;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            #panel button {
+                flex: 1;
+                padding: 6px 0;
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.08);
+                color: #eee;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            #panel button:hover {
+                background: rgba(255, 255, 255, 0.18);
+            }
+
+            #legend {
+                margin-top: 12px;
+                font-size: 11px;
+                color: #aaa;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            #legend .gradient {
+                flex: 1;
+                height: 8px;
+                border-radius: 4px;
+                background: linear-gradient(to right, #3399ff, #ff4444);
+            }
         </style>
     </head>
     <body>
+        <div id="panel">
+            <h3>Parámetros SPH</h3>
+
+            <label>Gravedad <span id="gravityVal"></span></label>
+            <input type="range" id="gravity" min="0" max="2000" step="10" />
+
+            <label>
+                <b>Radio de influencia </b>(Radar) <span id="radiusVal"></span
+            ></label>
+            <input type="range" id="radius" min="10" max="80" step="1" />
+
+            <label>
+                <b> Densidad de reposo </b>(Limite de densidad para repeler)
+                <span id="densityVal"></span
+            ></label>
+            <input type="range" id="density" min="0.1" max="3" step="0.1" />
+
+            <label>
+                <b> Multiplicador de presión </b>(Fuerza de repulsión)
+                <span id="pressureVal"></span
+            ></label>
+            <input type="range" id="pressure" min="0" max="50" step="1" />
+
+            <label>
+                <b> Viscosidad </b>(Agrupacion de partículas)<span
+                    id="viscosityVal"
+                ></span
+            ></label>
+            <input type="range" id="viscosity" min="0" max="0.5" step="0.01" />
+
+            <hr />
+
+            <label>Cantidad de partículas <span id="countVal"></span></label>
+            <input
+                type="range"
+                id="particleCount"
+                min="50"
+                max="800"
+                step="50"
+            />
+
+            <label>Ver Radar <input type="checkbox" id="debugRadar" /></label>
+
+            <div class="buttons">
+                <button id="respawnBtn">Reiniciar</button>
+                <button id="pauseBtn">Pausar</button>
+            </div>
+
+            <div id="legend">
+                Suelto
+                <div class="gradient"></div>
+                Comprimido
+            </div>
+        </div>
+
         <script src="https://pixijs.download/release/pixi.js"></script>
         <script type="module" src="main.js"></script>
     </body>
