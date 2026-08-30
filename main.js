@@ -22,37 +22,6 @@ app.stage.on("pointermove", (e) => {
     fluidSimulator.mousePos = { x: e.global.x, y: e.global.y };
 });
 
-// Filtro de desenfoque
-const blurFilter = new PIXI.BlurFilter();
-blurFilter.strength = 5; // Ajustá este valor según el tamaño de tu sprite
-
-// Filtro de matriz de color para endurecer el canal Alpha
-const colorMatrix = new PIXI.ColorMatrixFilter();
-colorMatrix.matrix = [
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    20,
-    -7, // Multiplica el alpha por 20 y le resta 7 (threshold)
-];
-
-app.stage.filters = [blurFilter, colorMatrix];
-
 document.body.appendChild(app.canvas);
 
 // Crear textura optimizada
@@ -63,6 +32,38 @@ const particleTexture = app.renderer.generateTexture(graphics);
 // Iniciar sistema
 const fluidSimulator = new FluidSystem(app.stage, particleTexture);
 fluidSimulator.spawnParticles(300); // 300 partículas para empezar
+
+// ------------------------------------------------------------------
+// Dibujo de referencia de las paredes del contenedor y del
+// obstáculo central, para que se entienda visualmente dónde están los
+// límites físicos.
+// ------------------------------------------------------------------
+const containerGraphic = new PIXI.Graphics();
+app.stage.addChild(containerGraphic);
+containerGraphic.zIndex = -1; // detrás de las partículas
+
+function drawContainer() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const margin = w * fluidSimulator.containerMarginRatio;
+
+    containerGraphic.clear();
+    containerGraphic.setStrokeStyle({ width: 2, color: 0x445566, alpha: 0.8 });
+    // Pared izquierda
+    containerGraphic.moveTo(margin, 0);
+    containerGraphic.lineTo(margin, h);
+    // Pared derecha
+    containerGraphic.moveTo(w - margin, 0);
+    containerGraphic.lineTo(w - margin, h);
+    containerGraphic.stroke();
+
+    // Obstáculo central (mismo radio que en resolveBoundaries)
+    containerGraphic.setStrokeStyle({ width: 2, color: 0x445566, alpha: 0.8 });
+    containerGraphic.circle(w / 2, h / 2, 80);
+    containerGraphic.stroke();
+}
+drawContainer();
+window.addEventListener("resize", drawContainer);
 
 // Bucle de juego
 app.ticker.add(() => {

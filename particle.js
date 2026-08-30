@@ -1,4 +1,3 @@
-// particle.js
 export class Particle {
     constructor(x, y, texture, stage) {
         // Datos Físicos (Lógica Lagrangiana)

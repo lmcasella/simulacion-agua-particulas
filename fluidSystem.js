@@ -7,20 +7,50 @@ export class FluidSystem {
         this.texture = texture;
 
         // Constantes SPH
-        this.gravity = 980; // Aceleración en Y hacia abajo
-        this.smoothingRadius = 30; // El círculo de influencia (h)
-        this.targetDensity = 1.0; // Densidad de reposo
-        this.pressureMultiplier = 10; // Define qué tan violento es el rechazo
-        this.viscosityMultiplier = 0.05;
+        this.gravity = 300; // Aceleración en Y hacia abajo
+        this.smoothingRadius = 35; // El círculo de influencia (h)
+
+        // IMPORTANTE: targetDensity depende directamente de cómo esté escalado
+        // el Kernel. Con smoothingKernel = (1 - d/radio)^3 (SIN normalizar por
+        // volumen), una partícula completamente aislada ya tiene densidad = 1
+        // solo por influenciarse a sí misma. Con vecinas bien empaquetadas
+        // (radio=35) la densidad real medida da entre ~1.5 y ~7 según qué tan
+        // juntas estén. targetDensity tiene que vivir en ESE rango, si no el
+        // sistema queda "sobrepresurizado" todo el tiempo y nunca asienta.
+        this.targetDensity = 2.5; // Densidad de reposo
+
+        this.pressureMultiplier = 4000; // Define qué tan violento es el rechazo
+        this.viscosityMultiplier = 0.1;
+
+        // Sub-pasos de física por frame. Con pressureMultiplier alto, el
+        // sistema se vuelve "rígido" (como un resorte muy duro): si lo
+        // integrás con un solo paso grande (deltaTime completo, hasta 30ms),
+        // la simulación se vuelve inestable y las partículas se comprimen
+        // mal o explotan. Dividiendo el mismo deltaTime en varios pasos
+        // más chicos, cada uno queda dentro de un rango estable.
+        this.subSteps = 3;
+
+        // Contenedor tipo "pileta": paredes más angostas que la pantalla
+        // completa, para que el agua acumule profundidad en vez de
+        // desparramarse en una capa fina por todo el ancho disponible.
+        // Es un porcentaje del ancho de ventana, de cada lado.
+        this.containerMarginRatio = 0.28;
 
         this.mousePos = { x: -1000, y: -1000 };
+
+        // Cacheamos la referencia al checkbox una sola vez, en vez de
+        // buscarlo en el DOM en cada frame (con miles de partículas eso
+        // se nota en el rendimiento).
+        this.debugToggle = document.getElementById("debugRadar");
     }
 
+    // Nace la simulación con partículas agrupadas arriba, en el centro,
+    // simulando que se "vierte" agua dentro del contenedor.
     spawnParticles(count) {
+        const centroX = window.innerWidth / 2;
         for (let i = 0; i < count; i++) {
-            // Spawnea partículas en posiciones aleatorias o en bloque
-            let px = Math.random() * 400 + 100;
-            let py = Math.random() * 200 + 100;
+            let px = centroX + (Math.random() * 200 - 100);
+            let py = Math.random() * 300;
             this.particles.push(new Particle(px, py, this.texture, this.stage));
         }
     }
@@ -39,28 +69,43 @@ export class FluidSystem {
         // Acá iría la actualización de tu Spatial Hashing Grid
         // this.spatialHash.update(this.particles);
 
-        // PASO 1: Calcular Densidad y Presión
-        for (let p of this.particles) {
-            this.calculateDensity(p);
+        // Repartimos el deltaTime del frame en varios sub-pasos más chicos.
+        // Esto es lo que evita que, al subir pressureMultiplier para que el
+        // agua sostenga su propio peso apilada, la simulación se vuelva
+        // inestable (partículas que se aplastan en una sola línea o que
+        // explotan). Cada sub-paso hace el ciclo completo: densidad ->
+        // fuerzas -> integración.
+        const subDt = deltaTime / this.subSteps;
+        for (let s = 0; s < this.subSteps; s++) {
+            // PASO 1: Calcular Densidad y Presión
+            for (let p of this.particles) {
+                this.calculateDensity(p);
+            }
+
+            // PASO 2: Calcular Fuerzas (Gravedad, Presión repulsiva, Viscosidad)
+            for (let p of this.particles) {
+                this.calculateForces(p);
+            }
+
+            // PASO 3: Integración (Mover partículas y aplicar límites de pantalla)
+            for (let p of this.particles) {
+                this.integrate(p, subDt);
+            }
         }
 
-        // PASO 2: Calcular Fuerzas (Gravedad, Presión repulsiva, Viscosidad)
+        // El render (sprites y color) se actualiza una sola vez por frame,
+        // no en cada sub-paso: no aporta nada visual y sería trabajo de más.
         for (let p of this.particles) {
-            this.calculateForces(p);
-        }
-
-        // PASO 3: Integración (Mover partículas y aplicar límites de pantalla)
-        for (let p of this.particles) {
-            this.integrate(p, deltaTime);
             p.updateVisuals();
             p.updateColorByDensity(this.targetDensity);
         }
 
         // Mostrar radar solo en la partícula 0 si el checkbox está activo
-        const debugToggle = document.getElementById("debugRadar");
         if (this.particles.length > 0) {
             const p = this.particles[0];
-            p.radarGraphic.visible = debugToggle && debugToggle.checked;
+            p.radarGraphic.visible = !!(
+                this.debugToggle && this.debugToggle.checked
+            );
             if (p.radarGraphic.visible) {
                 p.radarGraphic.clear();
                 p.radarGraphic.setStrokeStyle({
@@ -78,29 +123,18 @@ export class FluidSystem {
         // Si está fuera del radio de influencia, no tiene efecto
         if (distancia >= radio) return 0;
 
-        // Calculamos la diferencia
-        const valor = radio - distancia;
+        const valor = 1 - distancia / radio;
 
-        // Lo elevamos al cubo para que la curva sea suave.
-        // El divisor (volumen) es una constante matemática de normalización
-        // para asegurar que la suma de influencias tenga sentido físico en 2D.
-        const volumen = (Math.PI * Math.pow(radio, 4)) / 6;
-
-        return (valor * valor * valor) / volumen;
+        return valor * valor * valor;
     }
 
     smoothingKernelDerivative(radio, distancia) {
         if (distancia >= radio || distancia === 0) return 0;
 
-        const valor = radio - distancia;
+        const valor = 1 - distancia / radio;
 
-        // La derivada de (radio - distancia)^3 genera un multiplicador de 3
-        // y eleva el resto al cuadrado.
-        const volumen = (Math.PI * Math.pow(radio, 4)) / 6;
-
-        // Retorna un valor negativo porque la fuerza de presión empuja hacia AFUERA
-        // (desde la mayor concentración hacia la menor).
-        return (-3 * valor * valor) / volumen;
+        // Derivada matemática de la función normalizada superior
+        return (-3 * valor * valor) / radio;
     }
 
     calculateDensity(particula) {
@@ -210,6 +244,20 @@ export class FluidSystem {
         p.velocity.x += p.force.x * dt;
         p.velocity.y += p.force.y * dt;
 
+        // Salvavidas numérico: con pressureMultiplier alto, un frame con dt
+        // grande (lag momentáneo) podría generar una fuerza puntual enorme
+        // y mandar una partícula a velocidad absurda ("explota" fuera de
+        // pantalla). Este clamp no afecta el comportamiento normal del
+        // fluido, solo evita ese caso límite.
+        const maxSpeed = 2500;
+        const speed = Math.sqrt(
+            p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y,
+        );
+        if (speed > maxSpeed) {
+            p.velocity.x = (p.velocity.x / speed) * maxSpeed;
+            p.velocity.y = (p.velocity.y / speed) * maxSpeed;
+        }
+
         // Posición = Velocidad * dt
         p.position.x += p.velocity.x * dt;
         p.position.y += p.velocity.y * dt;
@@ -222,16 +270,25 @@ export class FluidSystem {
         const bounds = { width: window.innerWidth, height: window.innerHeight };
         const damping = -0.5; // Pérdida de energía al chocar
 
-        if (p.position.x < 0) {
-            p.position.x = 0;
+        const radioVisual = 5;
+
+        // Paredes del contenedor tipo "pileta": más angostas que la pantalla
+        // completa, para que el agua acumule profundidad visible en vez de
+        // desparramarse por todo el ancho de la ventana.
+        const margin = bounds.width * this.containerMarginRatio;
+        const leftWall = margin;
+        const rightWall = bounds.width - margin;
+
+        if (p.position.x < leftWall + radioVisual) {
+            p.position.x = leftWall + radioVisual;
             p.velocity.x *= damping;
         }
-        if (p.position.x > bounds.width) {
-            p.position.x = bounds.width;
+        if (p.position.x > rightWall - radioVisual) {
+            p.position.x = rightWall - radioVisual;
             p.velocity.x *= damping;
         }
-        if (p.position.y > bounds.height) {
-            p.position.y = bounds.height;
+        if (p.position.y > bounds.height - radioVisual) {
+            p.position.y = bounds.height - radioVisual;
             p.velocity.y *= damping;
         }
 
