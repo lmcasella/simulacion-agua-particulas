@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Demo LiquidFun (motor real de Google, via Emscripten)</title>
+
+        <!--
+          IMPORTANTE: este archivo NO reimplementa LiquidFun ni inventa una
+          API nueva. Carga, tal cual, los mismos 5 archivos que usa el demo
+          público y ya funcionando de doebi:
+          https://doeberl.at/liquidfun.js-demo/
+          (repo: https://github.com/doebi/liquidfun.js-demo)
+
+          La diferencia es que acá los pedimos desde jsDelivr (un CDN que
+          sirve archivos directo desde GitHub) en vez de tenerlos como
+          archivos locales en una carpeta — así este único .html ya
+          funciona sin tener que descargar y organizar 5 archivos aparte.
+
+          Requiere conexión a internet para cargar estos scripts. Como
+          plan B por si el wifi del aula falla, tengan también abierta la
+          pestaña con el link directo: https://doeberl.at/liquidfun.js-demo/
+        -->
+        <script src="https://cdn.jsdelivr.net/gh/doebi/liquidfun.js-demo@master/js/lib/pixi.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/doebi/liquidfun.js-demo@master/js/lib/liquidfun_v1.1.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/doebi/liquidfun.js-demo@master/js/lib/liquidfun-renderer.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/doebi/liquidfun.js-demo@master/js/lib/stats.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/doebi/liquidfun.js-demo@master/js/main.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/gh/doebi/liquidfun.js-demo@master/css/style.css"
+            type="text/css"
+            media="screen"
+            charset="utf-8"
+        />
+
+        <style>
+            body {
+                margin: 0;
+                background: #111;
+                font-family: "Segoe UI", Arial, sans-serif;
+            }
+            #hint {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                color: #eee;
+                background: rgba(0, 0, 0, 0.6);
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 13px;
+                z-index: 10;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="hint">
+            <!-- <p>
+                Click: crear caja dinámica &nbsp;|&nbsp; Ctrl+Click: crear caja
+                estática &nbsp;|&nbsp; Shift+Click: tirar partículas de agua
+                (LiquidFun / SPH real de Google)
+            </p> -->
+        </div>
+    </body>
+</html>
