@@ -29,9 +29,57 @@ const graphics = new PIXI.Graphics();
 graphics.circle(0, 0, 10).fill(0xffffff); // blanco: se tiñe por densidad en runtime
 const particleTexture = app.renderer.generateTexture(graphics);
 
-// Iniciar sistema
-const fluidSimulator = new FluidSystem(app.stage, particleTexture);
-fluidSimulator.spawnParticles(300); // 300 partículas para empezar
+// Capa exclusiva para el agua
+const fluidContainer = new PIXI.Container();
+app.stage.addChild(fluidContainer);
+
+// Capa exclusiva para las líneas (evita que el radar se desenfoque)
+const debugContainer = new PIXI.Container();
+app.stage.addChild(debugContainer);
+
+// Filtros Metaballs
+const blurFilter = new PIXI.BlurFilter();
+blurFilter.strength = 8; // Expande el halo
+
+// Control del Filtro Metaball
+const blurInput = document.getElementById("blurSlider");
+const blurLabel = document.getElementById("blurVal");
+
+blurLabel.textContent = blurInput.value;
+
+const colorMatrix = new PIXI.ColorMatrixFilter();
+colorMatrix.matrix = [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    20,
+    -7, // Guillotina del canal Alpha
+];
+
+fluidContainer.filters = [blurFilter, colorMatrix];
+
+// Iniciar sistema pasando ambos contenedores
+const fluidSimulator = new FluidSystem(
+    fluidContainer,
+    debugContainer,
+    particleTexture,
+);
+fluidSimulator.spawnParticles(300);
 
 // ------------------------------------------------------------------
 // Dibujo de referencia de las paredes del contenedor y del
@@ -152,6 +200,10 @@ document.getElementById("particleCount").addEventListener("change", (e) => {
     fluidSimulator.respawn(Number(e.target.value));
 });
 
+document.getElementById("useHash").addEventListener("change", (e) => {
+    fluidSimulator.useSpatialHash = e.target.checked;
+});
+
 document.getElementById("respawnBtn").addEventListener("click", () => {
     fluidSimulator.respawn(fluidSimulator.particles.length);
 });
@@ -166,5 +218,19 @@ pauseBtn.addEventListener("click", () => {
     } else {
         app.ticker.start();
         pauseBtn.textContent = "Pausar";
+    }
+});
+
+blurInput.addEventListener("input", (e) => {
+    const val = Number(e.target.value);
+    blurLabel.textContent = val;
+
+    if (val === 0) {
+        // Desactivar filtros para ver las partículas puras (Mejora el rendimiento)
+        fluidContainer.filters = [];
+    } else {
+        // Activar filtros y actualizar la fuerza del desenfoque
+        blurFilter.strength = val;
+        fluidContainer.filters = [blurFilter, colorMatrix];
     }
 });

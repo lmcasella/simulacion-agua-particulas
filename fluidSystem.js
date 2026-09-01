@@ -1,16 +1,17 @@
 // fluidSystem.js
 import { Particle } from "./particle.js";
 export class FluidSystem {
-    constructor(stage, texture) {
+    constructor(stage, debugContainer, texture) {
         this.particles = [];
         this.stage = stage;
+        this.debugContainer = debugContainer;
         this.texture = texture;
 
         // Constantes SPH
         this.gravity = 300; // Aceleración en Y hacia abajo
         this.smoothingRadius = 35; // El círculo de influencia (h)
 
-        // IMPORTANTE: targetDensity depende directamente de cómo esté escalado
+        // targetDensity depende directamente de cómo esté escalado
         // el Kernel. Con smoothingKernel = (1 - d/radio)^3 (SIN normalizar por
         // volumen), una partícula completamente aislada ya tiene densidad = 1
         // solo por influenciarse a sí misma. Con vecinas bien empaquetadas
@@ -42,6 +43,14 @@ export class FluidSystem {
         // buscarlo en el DOM en cada frame (con miles de partículas eso
         // se nota en el rendimiento).
         this.debugToggle = document.getElementById("debugRadar");
+
+        this.useSpatialHash = true;
+        this.hashGrid = new Map();
+
+        // Gráfico para visualizar la grilla
+        this.gridGraphic = new PIXI.Graphics();
+        this.debugContainer.addChild(this.gridGraphic);
+        this.gridGraphic.zIndex = -2;
     }
 
     // Nace la simulación con partículas agrupadas arriba, en el centro,
@@ -51,7 +60,15 @@ export class FluidSystem {
         for (let i = 0; i < count; i++) {
             let px = centroX + (Math.random() * 200 - 100);
             let py = Math.random() * 300;
-            this.particles.push(new Particle(px, py, this.texture, this.stage));
+            this.particles.push(
+                new Particle(
+                    px,
+                    py,
+                    this.texture,
+                    this.stage,
+                    this.debugContainer,
+                ),
+            );
         }
     }
 
@@ -77,6 +94,11 @@ export class FluidSystem {
         // fuerzas -> integración.
         const subDt = deltaTime / this.subSteps;
         for (let s = 0; s < this.subSteps; s++) {
+            // Construimos la grilla antes de calcular físicas
+            if (this.useSpatialHash) {
+                this.buildGrid();
+            }
+
             // PASO 1: Calcular Densidad y Presión
             for (let p of this.particles) {
                 this.calculateDensity(p);
@@ -117,6 +139,32 @@ export class FluidSystem {
                 p.radarGraphic.stroke();
             }
         }
+
+        // Dibujar la grilla si el checkbox está activo
+        const gridToggle = document.getElementById("debugGrid");
+        this.gridGraphic.visible = !!(gridToggle && gridToggle.checked);
+
+        if (this.gridGraphic.visible) {
+            this.gridGraphic.clear();
+            this.gridGraphic.setStrokeStyle({
+                width: 1,
+                color: 0x444444,
+                alpha: 0.5,
+            });
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            for (let x = 0; x < w; x += this.smoothingRadius) {
+                this.gridGraphic.moveTo(x, 0);
+                this.gridGraphic.lineTo(x, h);
+            }
+            for (let y = 0; y < h; y += this.smoothingRadius) {
+                this.gridGraphic.moveTo(0, y);
+                this.gridGraphic.lineTo(w, y);
+            }
+            this.gridGraphic.stroke();
+        }
     }
 
     smoothingKernel(radio, distancia) {
@@ -142,7 +190,11 @@ export class FluidSystem {
         // Por lo tanto, empezamos sumando su propio valor en el centro del Kernel
         particula.density = this.smoothingKernel(this.smoothingRadius, 0);
 
-        for (let vecina of this.particles) {
+        const listaVecinas = this.useSpatialHash
+            ? this.getNeighbors(particula)
+            : this.particles;
+
+        for (let vecina of listaVecinas) {
             // Evitamos que se calcule contra sí misma
             if (particula === vecina) continue;
 
@@ -178,7 +230,11 @@ export class FluidSystem {
         let viscosidadX = 0;
         let viscosidadY = 0;
 
-        for (let vecina of this.particles) {
+        const listaVecinas = this.useSpatialHash
+            ? this.getNeighbors(particula)
+            : this.particles;
+
+        for (let vecina of listaVecinas) {
             if (particula === vecina) continue;
 
             const difX = particula.position.x - vecina.position.x;
@@ -312,5 +368,40 @@ export class FluidSystem {
             p.velocity.x -= 2 * dot * normalX * 0.5;
             p.velocity.y -= 2 * dot * normalY * 0.5;
         }
+    }
+
+    buildGrid() {
+        this.hashGrid.clear();
+        const cellSize = this.smoothingRadius; // La celda mide lo mismo que el radar
+
+        for (let p of this.particles) {
+            const col = Math.floor(p.position.x / cellSize);
+            const row = Math.floor(p.position.y / cellSize);
+            const key = `${col},${row}`;
+
+            if (!this.hashGrid.has(key)) {
+                this.hashGrid.set(key, []);
+            }
+            this.hashGrid.get(key).push(p);
+        }
+    }
+
+    getNeighbors(p) {
+        const neighbors = [];
+        const cellSize = this.smoothingRadius;
+        const col = Math.floor(p.position.x / cellSize);
+        const row = Math.floor(p.position.y / cellSize);
+
+        // Revisamos la celda actual y las 8 adyacentes (Matriz 3x3)
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                const key = `${col + x},${row + y}`;
+                const cell = this.hashGrid.get(key);
+                if (cell) {
+                    neighbors.push(...cell);
+                }
+            }
+        }
+        return neighbors;
     }
 }
