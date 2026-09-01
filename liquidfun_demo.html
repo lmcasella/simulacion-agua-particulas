@@ -41,24 +41,49 @@
             }
             #hint {
                 position: fixed;
-                bottom: 10px;
-                left: 10px;
                 color: #eee;
                 background: rgba(0, 0, 0, 0.6);
                 padding: 8px 12px;
                 border-radius: 8px;
                 font-size: 13px;
+                /* z-index: 10; */
+            }
+
+            #panel-cambiar {
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                background: rgba(20, 20, 25, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 14px 16px;
+                color: #eee;
+                backdrop-filter: blur(4px);
                 z-index: 10;
+            }
+
+            #cambiarBtn {
+                color: #66ccff;
+                text-decoration: none;
+                font-size: 13px;
+            }
+
+            div[style*="z-index: 10000"] {
+                display: none !important;
             }
         </style>
     </head>
+
     <body>
+        <div id="panel-cambiar">
+            <a href="index.html" id="cambiarBtn">Cambiar a SPH</a>
+        </div>
+
         <div id="hint">
-            <!-- <p>
+            <p>
                 Click: crear caja dinámica &nbsp;|&nbsp; Ctrl+Click: crear caja
                 estática &nbsp;|&nbsp; Shift+Click: tirar partículas de agua
-                (LiquidFun / SPH real de Google)
-            </p> -->
+            </p>
         </div>
     </body>
 </html>
