@@ -39,7 +39,7 @@ app.stage.addChild(debugContainer);
 
 // Filtros Metaballs
 const blurFilter = new PIXI.BlurFilter();
-blurFilter.strength = 8; // Expande el halo
+blurFilter.strength = 0; // Expande el halo
 
 // Control del Filtro Metaball
 const blurInput = document.getElementById("blurSlider");
@@ -71,7 +71,7 @@ colorMatrix.matrix = [
     -7, // Guillotina del canal Alpha
 ];
 
-fluidContainer.filters = [blurFilter, colorMatrix];
+fluidContainer.filters = [];
 
 // Iniciar sistema pasando ambos contenedores
 const fluidSimulator = new FluidSystem(
@@ -226,11 +226,9 @@ blurInput.addEventListener("input", (e) => {
     blurLabel.textContent = val;
 
     if (val === 0) {
-        // Desactivar filtros para ver las partículas puras (Mejora el rendimiento)
-        fluidContainer.filters = [];
+        fluidContainer.filters = []; // Apaga el filtro, vuelven los colores
     } else {
-        // Activar filtros y actualizar la fuerza del desenfoque
         blurFilter.strength = val;
-        fluidContainer.filters = [blurFilter, colorMatrix];
+        fluidContainer.filters = [blurFilter, colorMatrix]; // Enciende el efecto agua
     }
 });
