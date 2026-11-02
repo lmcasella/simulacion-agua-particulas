@@ -17,14 +17,14 @@ cargan desde el repo de RagAssembler2D vía jsDelivr, fijados a un commit (ver `
 
 | | Teclado | Gamepad |
 | --- | --- | --- |
-| Jugador 1 | `A` / `D` moverse, `Espacio` disparar | 1.er gamepad conectado |
-| Jugador 2 | `←` / `→` moverse, `Enter` disparar | 2.º gamepad conectado |
+| Jugador 1 | `A` / `D` moverse, `W` saltar, `Espacio` disparar | 1.er gamepad conectado |
+| Jugador 2 | `←` / `→` moverse, `↑` saltar, `Enter` disparar | 2.º gamepad conectado |
 
 Los dos jugadores pueden compartir el mismo teclado (estilo Duck Game): WASD a la izquierda, flechas a
-la derecha. `W`/`S` y `↑`/`↓` quedan libres para acciones futuras (saltar, agacharse, etc.).
+la derecha. `S` y `↓` quedan libres para una acción futura (agacharse, etc.).
 
-Gamepad (layout Xbox / "standard mapping"): stick izquierdo o D-pad para moverse, `A`, `RB` o `RT` para
-disparar. **El navegador no muestra los gamepads hasta que se aprieta un botón** con la página en foco;
+Gamepad (layout Xbox / "standard mapping"): stick izquierdo o D-pad para moverse, `A` o D-pad arriba
+para saltar, `X`, `RB` o `RT` para disparar. **El navegador no muestra los gamepads hasta que se aprieta un botón** con la página en foco;
 el panel indica cuál quedó asignado a cada jugador. Teclado y gamepad funcionan a la vez.
 
 Para probar otro ragdoll: arrastrar un `.rag.json` a la ventana o usar el selector del panel (se usa para
@@ -53,8 +53,9 @@ los dos jugadores). El panel también permite elegir desde qué body sale el lí
 - **Otras teclas o botones:** `keys` de cada jugador y `CONFIG.gamepad`.
 - **Otra animación al caminar o disparar:** `CONFIG.character.clips`.
 - **Otro brazo por defecto:** `CONFIG.character.emitterBody` (nombre del body en el `.rag.json`).
-- **IA u otro dispositivo:** pasarle al `CharacterController` cualquier objeto con `moveAxis` (-1 a 1)
-  y `shooting` (bool). No hay que tocar nada más.
+- **Altura del salto:** `CONFIG.character.jumpSpeed` (altura ≈ v² / 2g).
+- **IA u otro dispositivo:** pasarle al `CharacterController` cualquier objeto con `moveAxis` (-1 a 1),
+  `jumping` y `shooting` (bool). No hay que tocar nada más.
 - **Más o menos líquido:** `CONFIG.liquid` y `CONFIG.liquidGun`.
 
 ## Notas
@@ -64,5 +65,8 @@ los dos jugadores). El panel también permite elegir desde qué body sale el lí
   RagImporter soporte v3, se borra ese bloque.
 - **Girar:** RagImporter solo permite espejar (`flipX`) al spawnear, así que girar re-spawnea el
   ragdoll espejado en la misma posición.
-- **Mover:** se ajusta la velocidad horizontal de los bodies (no se aplican fuerzas) porque
+- **Mover y saltar:** se ajusta la velocidad de los bodies (no se aplican fuerzas) porque
   `stepWorld` hace varios sub-pasos por frame y Box2D borra las fuerzas después de cada uno.
+- **¿Está en el piso?:** se revisan los contactos de Box2D y solo cuentan superficies que apuntan hacia
+  arriba (piso o la cabeza del otro jugador; las paredes no). Un ragdoll pierde contacto por instantes
+  todo el tiempo, así que recién se lo considera "en el aire" tras `coyoteTime` (0,1 s) sin piso.

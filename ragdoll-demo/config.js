@@ -32,7 +32,7 @@ export const CONFIG = {
             bodyColor: 0x7fa7d9,
             liquidColor: 0x3399ff,
             // Teclado compartido estilo Duck Game: WASD a la izquierda...
-            keys: { left: ["KeyA"], right: ["KeyD"], shoot: ["Space"] },
+            keys: { left: ["KeyA"], right: ["KeyD"], jump: ["KeyW"], shoot: ["Space"] },
             gamepadSlot: 0, // 0 = primer gamepad conectado
         },
         {
@@ -42,29 +42,32 @@ export const CONFIG = {
             bodyColor: 0xd9a07f,
             liquidColor: 0xff8833,
             // ...y flechas a la derecha.
-            keys: { left: ["ArrowLeft"], right: ["ArrowRight"], shoot: ["Enter"] },
+            keys: { left: ["ArrowLeft"], right: ["ArrowRight"], jump: ["ArrowUp"], shoot: ["Enter"] },
             gamepadSlot: 1,
         },
     ],
 
     // Botones/ejes según el "standard mapping" de la Gamepad API (layout Xbox):
-    // 0 = A, 5 = RB, 7 = RT, 14/15 = D-pad izquierda/derecha.
+    // 0 = A, 2 = X, 5 = RB, 7 = RT, 12 = D-pad arriba, 14/15 = D-pad izquierda/derecha.
     gamepad: {
         stickAxis: 0, // stick izquierdo, eje X
         deadzone: 0.25, // por debajo de esto el stick cuenta como suelto
         leftButtons: [14],
         rightButtons: [15],
-        shootButtons: [0, 5, 7],
+        jumpButtons: [0, 12],
+        shootButtons: [2, 5, 7],
     },
 
     character: {
         moveSpeed: 2.5, // m/s
         acceleration: 10, // 1/s: qué tan rápido alcanza moveSpeed
+        jumpSpeed: 5, // m/s hacia arriba: altura ≈ v² / 2g ≈ 1.25 m
+        coyoteTime: 0.1, // s sin tocar el piso que todavía cuentan como "en el piso"
 
         // Clip a reproducir en cada estado (key del clip en el .rag.json).
         // null = sin clip: el ragdoll sostiene su pose de reposo. Si el
         // ragdoll cargado no tiene alguno de estos clips, se ignora.
-        clips: { idle: null, walk: "walk", shoot: "aim" },
+        clips: { idle: null, walk: "walk", shoot: "aim", jump: "jump" },
 
         // Body de cuya punta sale el líquido. Si el ragdoll cargado no lo
         // tiene, se usa el último body del archivo (y se puede cambiar

@@ -96,10 +96,11 @@ const playerRows = players.map(({ settings }) => {
     const row = document.createElement("div");
     row.className = "player";
     row.style.borderLeftColor = `#${settings.liquidColor.toString(16).padStart(6, "0")}`;
-    const { left, right, shoot } = settings.keys;
+    const { left, right, jump, shoot } = settings.keys;
     row.innerHTML = `
         <b>${settings.name}</b>
         <div><kbd>${keyLabel(left[0])}</kbd>/<kbd>${keyLabel(right[0])}</kbd> moverse ·
+             <kbd>${keyLabel(jump[0])}</kbd> saltar ·
              <kbd>${keyLabel(shoot[0])}</kbd> disparar</div>
         <div class="pad"></div>`;
     playersPanel.appendChild(row);

@@ -6,6 +6,10 @@
 
 const GROUND_CLEARANCE = 0.02; // m sobre el piso al spawnear
 const CIRCLE_SHAPE = 0; // b2Shape::e_circle
+// Qué tan "hacia arriba" tiene que apuntar la superficie de contacto para
+// contar como piso (componente Y de la normal): 0.5 ≈ pendientes de hasta
+// 60°. Así una pared no cuenta y no se puede saltar pegado a ella.
+const MIN_GROUND_NORMAL_Y = 0.5;
 
 export class Character {
     #world;
@@ -15,6 +19,7 @@ export class Character {
     #clip = null;
     #emitterBody;
     #tip = null; // punta del brazo emisor, en coordenadas locales de su body
+    #manifold = new Box2D.b2WorldManifold(); // se reutiliza en isGrounded
 
     constructor(world, def, { x, facing = 1, emitterBody }) {
         this.#world = world;
@@ -58,6 +63,37 @@ export class Character {
         }
     }
 
+    // Impulso hacia arriba: fija la velocidad vertical de todos los bodies
+    // (mismo criterio que move, por los sub-pasos de stepWorld).
+    jump(speed) {
+        for (const body of this.#instance.bodies.values()) {
+            const velocity = body.GetLinearVelocity();
+            velocity.set_y(speed);
+            body.SetLinearVelocity(velocity);
+        }
+    }
+
+    // ¿Algún body está apoyado sobre algo? Revisa los contactos de Box2D:
+    // cuenta solo si la superficie apunta hacia arriba (piso, cabeza del
+    // otro jugador), no si es una pared. Los bodies del propio ragdoll no
+    // generan contactos entre sí, así que todo contacto es con "afuera".
+    isGrounded() {
+        for (const body of this.#instance.bodies.values()) {
+            for (let edge = body.GetContactList(); Box2D.getPointer(edge) !== 0; edge = edge.get_next()) {
+                const contact = edge.get_contact();
+                if (!contact.IsTouching()) continue;
+
+                // La normal va del fixture A al B: si este body es A, el
+                // piso está "del otro lado", así que se invierte.
+                contact.GetWorldManifold(this.#manifold);
+                const normalY = this.#manifold.get_normal().get_y();
+                const isA = sameBody(contact.GetFixtureA().GetBody(), body);
+                if ((isA ? -normalY : normalY) >= MIN_GROUND_NORMAL_Y) return true;
+            }
+        }
+        return false;
+    }
+
     // Reproduce un clip por key; null (o una key inexistente) = ninguno.
     setClip(key) {
         const next = this.#hasClip(key) ? key : null;
@@ -95,6 +131,7 @@ export class Character {
     destroy() {
         this.#instance?.destroy();
         this.#instance = null;
+        Box2D.destroy(this.#manifold);
     }
 
     #hasClip(key) {

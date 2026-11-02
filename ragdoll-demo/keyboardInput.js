@@ -1,5 +1,5 @@
 // keyboardInput.js
-// Lee el teclado y lo expone como intención: { moveAxis, shooting }.
+// Lee el teclado y lo expone como intención: { moveAxis, jumping, shooting }.
 // `bindings` mapea cada acción a una lista de KeyboardEvent.code.
 
 export class KeyboardInput {
@@ -25,11 +25,16 @@ export class KeyboardInput {
         return (this.#isDown("right") ? 1 : 0) - (this.#isDown("left") ? 1 : 0);
     }
 
+    get jumping() {
+        return this.#isDown("jump");
+    }
+
     get shooting() {
         return this.#isDown("shoot");
     }
 
     #isDown(action) {
-        return this.#bindings[action].some((code) => this.#pressed.has(code));
+        const codes = this.#bindings[action] ?? []; // acción sin teclas = nunca
+        return codes.some((code) => this.#pressed.has(code));
     }
 }

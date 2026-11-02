@@ -1,5 +1,5 @@
 // gamepadInput.js
-// Lee un gamepad y lo expone como intención: { moveAxis, shooting }.
+// Lee un gamepad y lo expone como intención: { moveAxis, jumping, shooting }.
 // Usa el "standard mapping" de la Gamepad API (layout tipo Xbox), que es
 // el que reportan Chrome/Edge/Firefox para la mayoría de los joysticks.
 //
@@ -30,6 +30,11 @@ export class GamepadInput {
         const stick = pad.axes[stickAxis] ?? 0;
         if (Math.abs(stick) >= deadzone) return stick;
         return (anyPressed(pad, rightButtons) ? 1 : 0) - (anyPressed(pad, leftButtons) ? 1 : 0);
+    }
+
+    get jumping() {
+        const pad = this.gamepad;
+        return pad !== null && anyPressed(pad, this.#settings.jumpButtons);
     }
 
     get shooting() {
