@@ -20,6 +20,9 @@ cargan desde el repo de RagAssembler2D vía jsDelivr, fijados a un commit (ver `
 | Jugador 1 | `A` / `D` moverse, `Espacio` disparar | 1.er gamepad conectado |
 | Jugador 2 | `←` / `→` moverse, `Enter` disparar | 2.º gamepad conectado |
 
+Los dos jugadores pueden compartir el mismo teclado (estilo Duck Game): WASD a la izquierda, flechas a
+la derecha. `W`/`S` y `↑`/`↓` quedan libres para acciones futuras (saltar, agacharse, etc.).
+
 Gamepad (layout Xbox / "standard mapping"): stick izquierdo o D-pad para moverse, `A`, `RB` o `RT` para
 disparar. **El navegador no muestra los gamepads hasta que se aprieta un botón** con la página en foco;
 el panel indica cuál quedó asignado a cada jugador. Teclado y gamepad funcionan a la vez.

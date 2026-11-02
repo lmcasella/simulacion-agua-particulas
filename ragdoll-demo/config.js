@@ -31,6 +31,7 @@ export const CONFIG = {
             facing: 1, // 1 = mira a la derecha, -1 = a la izquierda
             bodyColor: 0x7fa7d9,
             liquidColor: 0x3399ff,
+            // Teclado compartido estilo Duck Game: WASD a la izquierda...
             keys: { left: ["KeyA"], right: ["KeyD"], shoot: ["Space"] },
             gamepadSlot: 0, // 0 = primer gamepad conectado
         },
@@ -40,6 +41,7 @@ export const CONFIG = {
             facing: -1,
             bodyColor: 0xd9a07f,
             liquidColor: 0xff8833,
+            // ...y flechas a la derecha.
             keys: { left: ["ArrowLeft"], right: ["ArrowRight"], shoot: ["Enter"] },
             gamepadSlot: 1,
         },
