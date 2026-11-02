@@ -25,7 +25,7 @@ export class Character {
         this.#world = world;
         this.#def = def;
         this.#emitterBody = emitterBody;
-        this.#spawn(x, facing);
+        this.#spawn(facing, { x, y: null }); // y null = apoyado en el piso
     }
 
     // La instancia de RagImporter (bodies, joints). Solo lectura.
@@ -43,12 +43,13 @@ export class Character {
 
     // Gira el personaje hacia `direction` (signo: + derecha, - izquierda).
     // RagImporter solo permite espejar (flipX) al spawnear, así que girar
-    // = re-spawnear espejado en la misma X. Es lo más simple y alcanza
-    // para un demo; el "salto" visual es de un frame.
+    // = re-spawnear espejado en la misma posición y con la misma velocidad
+    // (si está en pleno salto, sigue en el aire). Es lo más simple y
+    // alcanza para un demo; el cambio de pose es de un frame.
     face(direction) {
         const facing = Math.sign(direction);
         if (facing === 0 || facing === this.#facing) return;
-        this.#spawn(this.position.x, facing);
+        this.#spawn(facing, this.position, centerOfMassVelocity(this.#instance));
     }
 
     // Lleva la velocidad horizontal de todos los bodies hacia `targetSpeed`.
@@ -138,21 +139,27 @@ export class Character {
         return key != null && this.#def.clips.some((clip) => clip.key === key);
     }
 
-    // Spawnea con el body raíz en `rootX` y los pies apoyados en el piso.
+    // Spawnea con el body raíz en `root` ({ x, y } en metros) y le da a
+    // todos los bodies la velocidad `velocity`. Con root.y = null, o si a
+    // esa altura quedaría enterrado, se apoya en el piso.
     // Para saber dónde caen raíz y pies, primero se hace un spawn de prueba
     // en el origen, se mide y se descarta (mismo truco que el demo de
-    // RagAssembler2D).
-    #spawn(rootX, facing) {
+    // RagAssembler2D). Ambos usan la pose del clip actual, así el cambio
+    // de pose al girar es el menor posible.
+    #spawn(facing, root, velocity = { x: 0, y: 0 }) {
         const flipX = facing < 0;
-        const probe = this.#def.spawn(this.#world, { x: 0, y: 0, flipX });
-        const rootOffsetX = probe.position.x;
-        const lift = GROUND_CLEARANCE - lowestPoint(probe);
+        const pose = this.#clip;
+        const probe = this.#def.spawn(this.#world, { x: 0, y: 0, flipX, pose });
+        const rootOffset = probe.position;
+        const groundY = GROUND_CLEARANCE - lowestPoint(probe);
         probe.destroy();
 
+        const y = root.y === null ? groundY : Math.max(root.y - rootOffset.y, groundY);
         this.#instance?.destroy();
-        this.#instance = this.#def.spawn(this.#world, { x: rootX - rootOffsetX, y: lift, flipX });
+        this.#instance = this.#def.spawn(this.#world, { x: root.x - rootOffset.x, y, flipX, pose });
         this.#facing = facing;
         this.#tip = findTip(this.#instance, this.#emitterBody);
+        setVelocity(this.#instance, velocity);
 
         // La instancia nueva arranca sin clips: re-aplicamos el actual.
         if (this.#clip) this.#instance.play(this.#clip);
@@ -165,6 +172,28 @@ export class Character {
 
 function forEachFixture(body, fn) {
     for (let f = body.GetFixtureList(); Box2D.getPointer(f) !== 0; f = f.GetNext()) fn(f);
+}
+
+// Velocidad del centro de masa: promedio de las velocidades de los bodies
+// ponderado por su masa (es la que conserva el impulso de un salto).
+function centerOfMassVelocity(instance) {
+    let mass = 0;
+    let vx = 0;
+    let vy = 0;
+    for (const body of instance.bodies.values()) {
+        const m = body.GetMass();
+        const v = body.GetLinearVelocity();
+        mass += m;
+        vx += m * v.get_x();
+        vy += m * v.get_y();
+    }
+    return mass > 0 ? { x: vx / mass, y: vy / mass } : { x: 0, y: 0 };
+}
+
+function setVelocity(instance, { x, y }) {
+    const velocity = new Box2D.b2Vec2(x, y);
+    for (const body of instance.bodies.values()) body.SetLinearVelocity(velocity);
+    Box2D.destroy(velocity);
 }
 
 function lowestPoint(instance) {
