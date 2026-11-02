@@ -1,7 +1,8 @@
-# Ragdoll + agua (RagImporter + LiquidFun)
+# Ragdolls + líquido (RagImporter + LiquidFun)
 
-Un ragdoll exportado desde [RagAssembler2D](https://gann4life.github.io/RagAssembler2D/)
-camina de izquierda a derecha y dispara agua (partículas de LiquidFun) desde la punta de un brazo.
+Dos jugadores controlan un ragdoll exportado desde [RagAssembler2D](https://gann4life.github.io/RagAssembler2D/)
+cada uno: caminan de izquierda a derecha y disparan líquido (partículas de LiquidFun) desde la punta de un
+brazo. Los líquidos de los dos comparten el mismo fluido: chocan, se apilan y empujan a los ragdolls.
 
 ## Cómo correrlo
 
@@ -14,35 +15,44 @@ npx http-server -c-1 .   # mismo comando que en RagAssembler2D
 Abrir `http://localhost:8080/ragdoll-demo/`. Necesita internet: PIXI, liquidfun.js y RagImporter se
 cargan desde el repo de RagAssembler2D vía jsDelivr, fijados a un commit (ver `index.html`).
 
-| Tecla | Acción |
-| --- | --- |
-| `A` / `D` o flechas | moverse |
-| `Espacio` o `J` | disparar agua |
+| | Teclado | Gamepad |
+| --- | --- | --- |
+| Jugador 1 | `A` / `D` moverse, `Espacio` disparar | 1.er gamepad conectado |
+| Jugador 2 | `←` / `→` moverse, `Enter` disparar | 2.º gamepad conectado |
 
-Para probar otro ragdoll: arrastrar un `.rag.json` a la ventana o usar el selector del panel. El panel
-también permite elegir desde qué body sale el agua.
+Gamepad (layout Xbox / "standard mapping"): stick izquierdo o D-pad para moverse, `A`, `RB` o `RT` para
+disparar. **El navegador no muestra los gamepads hasta que se aprieta un botón** con la página en foco;
+el panel indica cuál quedó asignado a cada jugador. Teclado y gamepad funcionan a la vez.
+
+Para probar otro ragdoll: arrastrar un `.rag.json` a la ventana o usar el selector del panel (se usa para
+los dos jugadores). El panel también permite elegir desde qué body sale el líquido.
 
 ## Qué hay en cada archivo
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `config.js` | Todos los valores ajustables: velocidades, clips por estado, teclas, agua, colores. |
+| `config.js` | Todos los valores ajustables: jugadores (teclas, colores, posición), gamepad, clips, líquido. |
 | `main.js` | Arma las piezas, conecta el panel y corre el loop. |
 | `ragdollLoader.js` | Texto → `RagDef` (incluye un adaptador temporal del formato v3 al v2). |
 | `character.js` | Envuelve la instancia de RagImporter: moverse, girar, clips y punta del brazo. |
 | `characterController.js` | Traduce input en acciones del personaje y del arma. |
 | `keyboardInput.js` | Teclado → `{ moveAxis, shooting }`. |
-| `liquidGun.js` | Emisor de partículas de LiquidFun. |
+| `gamepadInput.js` | Gamepad → `{ moveAxis, shooting }`. |
+| `combinedInput.js` | Une varios inputs en uno (teclado + gamepad del mismo jugador). |
+| `liquidSystem.js` | El fluido compartido (sistema de partículas de LiquidFun), con color por partícula. |
+| `liquidGun.js` | Emisor de un jugador: dispara partículas de su color al `LiquidSystem`. |
 | `world.js` | Mundo de Box2D, piso y paredes. |
-| `sceneRenderer.js` | Dibujo con PIXI.Graphics y cámara que sigue al personaje. |
+| `sceneRenderer.js` | Dibujo con PIXI.Graphics y cámara que encuadra a todos los jugadores. |
 
 ## Cambios típicos
 
+- **Más o menos jugadores:** agregar o quitar entradas en `CONFIG.players`.
+- **Otras teclas o botones:** `keys` de cada jugador y `CONFIG.gamepad`.
 - **Otra animación al caminar o disparar:** `CONFIG.character.clips`.
 - **Otro brazo por defecto:** `CONFIG.character.emitterBody` (nombre del body en el `.rag.json`).
-- **Gamepad o IA en vez de teclado:** pasarle al `CharacterController` cualquier objeto con
-  `moveAxis` (-1, 0, 1) y `shooting` (bool). No hay que tocar nada más.
-- **Más o menos agua:** `CONFIG.liquidGun`.
+- **IA u otro dispositivo:** pasarle al `CharacterController` cualquier objeto con `moveAxis` (-1 a 1)
+  y `shooting` (bool). No hay que tocar nada más.
+- **Más o menos líquido:** `CONFIG.liquid` y `CONFIG.liquidGun`.
 
 ## Notas
 

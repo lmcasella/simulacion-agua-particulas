@@ -82,6 +82,19 @@
                 padding: 1px 5px;
             }
 
+            .player {
+                border-left: 3px solid;
+                padding-left: 8px;
+                margin-bottom: 10px;
+            }
+
+            .player .pad {
+                color: #999;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
             #fileName {
                 color: #66ccff;
             }
@@ -118,7 +131,7 @@
         </div>
 
         <div id="panel">
-            <h3>Ragdoll + agua</h3>
+            <h3>Ragdolls + líquido</h3>
             <div>Cargado: <span id="fileName">-</span></div>
 
             <label>
@@ -127,13 +140,12 @@
             </label>
 
             <label>
-                Body que dispara agua (desde su punta)
+                Body que dispara líquido (desde su punta)
                 <select id="emitterSelect"></select>
             </label>
 
             <hr />
-            <div><kbd>A</kbd>/<kbd>D</kbd> o flechas: moverse</div>
-            <div><kbd>Espacio</kbd> o <kbd>J</kbd>: disparar agua</div>
+            <div id="players"></div>
             <div>Partículas: <span id="particleCount">0</span></div>
 
             <pre id="error" hidden></pre>

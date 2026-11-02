@@ -16,11 +16,11 @@ export class Character {
     #emitterBody;
     #tip = null; // punta del brazo emisor, en coordenadas locales de su body
 
-    constructor(world, def, { x, emitterBody }) {
+    constructor(world, def, { x, facing = 1, emitterBody }) {
         this.#world = world;
         this.#def = def;
         this.#emitterBody = emitterBody;
-        this.#spawn(x, 1);
+        this.#spawn(x, facing);
     }
 
     // La instancia de RagImporter (bodies, joints). Solo lectura.

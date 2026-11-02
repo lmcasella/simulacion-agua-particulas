@@ -8,6 +8,9 @@ import { fetchRagdoll, parseRagdoll, describeError } from "./ragdollLoader.js";
 import { Character } from "./character.js";
 import { CharacterController } from "./characterController.js";
 import { KeyboardInput } from "./keyboardInput.js";
+import { GamepadInput } from "./gamepadInput.js";
+import { combineInputs } from "./combinedInput.js";
+import { LiquidSystem } from "./liquidSystem.js";
 import { LiquidGun } from "./liquidGun.js";
 import { SceneRenderer } from "./sceneRenderer.js";
 
@@ -26,34 +29,53 @@ document.body.appendChild(app.canvas);
 // ------------------------------------------------------------------
 const world = createWorld(CONFIG.world);
 const staticBodies = createArena(world, CONFIG.world);
-const gun = new LiquidGun(world, CONFIG.liquidGun);
-const input = new KeyboardInput(CONFIG.controls);
+const liquid = new LiquidSystem(world, CONFIG.liquid);
 const renderer = new SceneRenderer(app, CONFIG.view);
 
-let character = null;
-let controller = null;
+// Input y arma de cada jugador viven toda la sesión; el personaje se
+// recrea cada vez que se importa un ragdoll.
+const players = CONFIG.players.map((settings) => {
+    const gamepad = new GamepadInput(settings.gamepadSlot, CONFIG.gamepad);
+    return {
+        settings,
+        gamepad,
+        input: combineInputs(new KeyboardInput(settings.keys), gamepad),
+        gun: new LiquidGun(liquid, CONFIG.liquidGun, settings.liquidColor),
+        character: null,
+        controller: null,
+    };
+});
 
-// Reemplaza el personaje actual por uno nuevo a partir de un ragdoll
-// ya parseado ({ def, json } de ragdollLoader).
+// Reemplaza los personajes por otros nuevos a partir de un ragdoll ya
+// parseado ({ def, json } de ragdollLoader). Todos usan el mismo ragdoll.
 function useRagdoll({ def, json }, label) {
     const bodyNames = json.bodies.map((body) => body.name);
     const emitterBody = bodyNames.includes(CONFIG.character.emitterBody)
         ? CONFIG.character.emitterBody
         : bodyNames.at(-1);
 
-    character?.destroy();
-    character = new Character(world, def, { x: CONFIG.character.spawnX, emitterBody });
-    controller = new CharacterController(character, gun, input, CONFIG.character);
+    for (const player of players) player.character?.destroy();
+    for (const player of players) {
+        const { spawnX, facing } = player.settings;
+        player.character = new Character(world, def, { x: spawnX, facing, emitterBody });
+        player.controller = new CharacterController(
+            player.character,
+            player.gun,
+            player.input,
+            CONFIG.character,
+        );
+    }
 
     showRagdollInfo(label, bodyNames, emitterBody);
 }
 
 // ------------------------------------------------------------------
-// Panel: importar archivo, elegir body emisor, errores
+// Panel: importar archivo, elegir body emisor, jugadores, errores
 // ------------------------------------------------------------------
 const fileName = document.getElementById("fileName");
 const fileInput = document.getElementById("fileInput");
 const emitterSelect = document.getElementById("emitterSelect");
+const playersPanel = document.getElementById("players");
 const particleCount = document.getElementById("particleCount");
 const errorBox = document.getElementById("error");
 
@@ -67,6 +89,34 @@ function showRagdollInfo(label, bodyNames, emitterBody) {
 function showError(label, error) {
     errorBox.textContent = `${label}: ${describeError(error)}`;
     errorBox.hidden = false;
+}
+
+// Una fila por jugador: nombre (con su color), teclas y gamepad asignado.
+const playerRows = players.map(({ settings }) => {
+    const row = document.createElement("div");
+    row.className = "player";
+    row.style.borderLeftColor = `#${settings.liquidColor.toString(16).padStart(6, "0")}`;
+    const { left, right, shoot } = settings.keys;
+    row.innerHTML = `
+        <b>${settings.name}</b>
+        <div><kbd>${keyLabel(left[0])}</kbd>/<kbd>${keyLabel(right[0])}</kbd> moverse ·
+             <kbd>${keyLabel(shoot[0])}</kbd> disparar</div>
+        <div class="pad"></div>`;
+    playersPanel.appendChild(row);
+    return row.querySelector(".pad");
+});
+
+function refreshGamepadStatus() {
+    players.forEach(({ gamepad }, i) => {
+        const pad = gamepad.gamepad;
+        const text = pad ? `🎮 ${pad.id}` : "🎮 sin gamepad (apretá un botón)";
+        if (playerRows[i].textContent !== text) playerRows[i].textContent = text;
+    });
+}
+
+function keyLabel(code) {
+    const names = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", Space: "Espacio" };
+    return names[code] ?? code.replace(/^(Key|Digit)/, "");
 }
 
 async function loadFile(file) {
@@ -85,7 +135,7 @@ fileInput.addEventListener("change", async () => {
 });
 
 emitterSelect.addEventListener("change", () => {
-    character?.setEmitterBody(emitterSelect.value);
+    for (const { character } of players) character?.setEmitterBody(emitterSelect.value);
     emitterSelect.blur();
 });
 
@@ -108,13 +158,15 @@ app.ticker.add((ticker) => {
     const frameDt = ticker.deltaMS / 1000;
     accumulator = Math.min(accumulator + frameDt, MAX_FRAME);
     while (accumulator >= STEP) {
-        controller?.update(STEP);
-        stepWorld(world, character ? [character.instance] : [], STEP);
+        for (const { controller } of players) controller?.update(STEP);
+        const instances = players.filter((p) => p.character).map((p) => p.character.instance);
+        stepWorld(world, instances, STEP);
         accumulator -= STEP;
     }
 
-    renderer.draw({ staticBodies, character, gun }, frameDt);
-    particleCount.textContent = gun.count;
+    renderer.draw({ staticBodies, players, liquid }, frameDt);
+    particleCount.textContent = liquid.count;
+    refreshGamepadStatus();
 });
 
 // Ragdoll por defecto
