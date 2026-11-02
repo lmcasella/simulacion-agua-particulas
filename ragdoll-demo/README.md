@@ -8,11 +8,10 @@ camina de izquierda a derecha y dispara agua (partículas de LiquidFun) desde la
 Necesita un servidor local, porque usa módulos ES y `fetch` (no anda abriendo el archivo con doble clic):
 
 ```sh
-npx serve .
-# o la extensión Live Server de VS Code
+npx http-server -c-1 .   # mismo comando que en RagAssembler2D
 ```
 
-Abrir `http://localhost:3000/ragdoll-demo/`. Necesita internet: PIXI, liquidfun.js y RagImporter se
+Abrir `http://localhost:8080/ragdoll-demo/`. Necesita internet: PIXI, liquidfun.js y RagImporter se
 cargan desde el repo de RagAssembler2D vía jsDelivr, fijados a un commit (ver `index.html`).
 
 | Tecla | Acción |
