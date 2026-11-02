@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Ragdoll + LiquidFun - RagImporter</title>
+
+        <!--
+          RagImporter, liquidfun.js y PIXI se cargan desde el repo de
+          RagAssembler2D vía jsDelivr, fijados a un commit para que una
+          actualización del repo no rompa el demo. Para actualizar, cambiar
+          el hash en los 3 lugares (o apuntar el import map a una copia
+          local, p. ej. "../vendor/ragassembler/lib/ragimporter.js").
+
+          Se usa el liquidfun.js de RagAssembler2D (y no el de doebi que usa
+          liquidfun_demo.html) porque RagImporter está probado contra ese
+          build: mismo namespace Box2D, mismos bindings.
+        -->
+        <script src="https://cdn.jsdelivr.net/gh/gann4life/RagAssembler2D@65affa5664b6ae64228dccce4b96e909dee0895e/vendor/pixi.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/gann4life/RagAssembler2D@65affa5664b6ae64228dccce4b96e909dee0895e/vendor/liquidfun.js"></script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "ragimporter": "https://cdn.jsdelivr.net/gh/gann4life/RagAssembler2D@65affa5664b6ae64228dccce4b96e909dee0895e/lib/ragimporter.js"
+                }
+            }
+        </script>
+
+        <style>
+            body {
+                margin: 0;
+                overflow: hidden;
+                background-color: #1a1a1a;
+                font-family: "Segoe UI", Arial, sans-serif;
+            }
+            canvas {
+                display: block;
+            }
+
+            #panel {
+                position: fixed;
+                top: 16px;
+                right: 16px;
+                width: 260px;
+                background: rgba(20, 20, 25, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 14px 16px;
+                color: #eee;
+                backdrop-filter: blur(4px);
+                z-index: 10;
+                font-size: 12px;
+            }
+
+            #panel h3 {
+                margin: 0 0 10px 0;
+                font-size: 15px;
+                font-weight: 600;
+                color: #66ccff;
+            }
+
+            #panel label {
+                display: block;
+                margin-top: 10px;
+                color: #ccc;
+            }
+
+            #panel input,
+            #panel select {
+                width: 100%;
+                margin-top: 4px;
+            }
+
+            #panel hr {
+                border: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.15);
+                margin: 12px 0;
+            }
+
+            #panel kbd {
+                background: rgba(255, 255, 255, 0.12);
+                border-radius: 4px;
+                padding: 1px 5px;
+            }
+
+            .player {
+                border-left: 3px solid;
+                padding-left: 8px;
+                margin-bottom: 10px;
+            }
+
+            .player .pad {
+                color: #999;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            #fileName {
+                color: #66ccff;
+            }
+
+            #error {
+                color: #ff8888;
+                white-space: pre-wrap;
+                font-size: 11px;
+                max-height: 200px;
+                overflow: auto;
+            }
+
+            #panel-cambiar {
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                background: rgba(20, 20, 25, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 14px 16px;
+                z-index: 10;
+            }
+
+            #panel-cambiar a {
+                color: #66ccff;
+                text-decoration: none;
+                font-size: 13px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="panel-cambiar">
+            <a href="../index.html">Volver a SPH</a>
+        </div>
+
+        <div id="panel">
+            <h3>Ragdolls + líquido</h3>
+            <div>Cargado: <span id="fileName">-</span></div>
+
+            <label>
+                Importar ragdoll (.rag.json) — o arrastralo a la ventana
+                <input id="fileInput" type="file" accept=".json,application/json" />
+            </label>
+
+            <label>
+                Body que dispara líquido (desde su punta)
+                <select id="emitterSelect"></select>
+            </label>
+
+            <hr />
+            <div id="players"></div>
+            <div>Partículas: <span id="particleCount">0</span></div>
+
+            <pre id="error" hidden></pre>
+        </div>
+
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

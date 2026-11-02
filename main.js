@@ -22,11 +22,31 @@ app.stage.on("pointermove", (e) => {
     fluidSimulator.mousePos = { x: e.global.x, y: e.global.y };
 });
 
-// Filtro de desenfoque
-const blurFilter = new PIXI.BlurFilter();
-blurFilter.strength = 5; // Ajustá este valor según el tamaño de tu sprite
+document.body.appendChild(app.canvas);
 
-// Filtro de matriz de color para endurecer el canal Alpha
+// Crear textura optimizada
+const graphics = new PIXI.Graphics();
+graphics.circle(0, 0, 10).fill(0xffffff); // blanco: se tiñe por densidad en runtime
+const particleTexture = app.renderer.generateTexture(graphics);
+
+// Capa exclusiva para el agua
+const fluidContainer = new PIXI.Container();
+app.stage.addChild(fluidContainer);
+
+// Capa exclusiva para las líneas (evita que el radar se desenfoque)
+const debugContainer = new PIXI.Container();
+app.stage.addChild(debugContainer);
+
+// Filtros Metaballs
+const blurFilter = new PIXI.BlurFilter();
+blurFilter.strength = 0; // Expande el halo
+
+// Control del Filtro Metaball
+const blurInput = document.getElementById("blurSlider");
+const blurLabel = document.getElementById("blurVal");
+
+blurLabel.textContent = blurInput.value;
+
 const colorMatrix = new PIXI.ColorMatrixFilter();
 colorMatrix.matrix = [
     1,
@@ -48,21 +68,50 @@ colorMatrix.matrix = [
     0,
     0,
     20,
-    -7, // Multiplica el alpha por 20 y le resta 7 (threshold)
+    -7, // Guillotina del canal Alpha
 ];
 
-app.stage.filters = [blurFilter, colorMatrix];
+fluidContainer.filters = [];
 
-document.body.appendChild(app.canvas);
+// Iniciar sistema pasando ambos contenedores
+const fluidSimulator = new FluidSystem(
+    fluidContainer,
+    debugContainer,
+    particleTexture,
+);
+fluidSimulator.spawnParticles(300);
 
-// Crear textura optimizada
-const graphics = new PIXI.Graphics();
-graphics.circle(0, 0, 10).fill(0xffffff); // blanco: se tiñe por densidad en runtime
-const particleTexture = app.renderer.generateTexture(graphics);
+// ------------------------------------------------------------------
+// Dibujo de referencia de las paredes del contenedor y del
+// obstáculo central, para que se entienda visualmente dónde están los
+// límites físicos.
+// ------------------------------------------------------------------
+const containerGraphic = new PIXI.Graphics();
+app.stage.addChild(containerGraphic);
+containerGraphic.zIndex = -1; // detrás de las partículas
 
-// Iniciar sistema
-const fluidSimulator = new FluidSystem(app.stage, particleTexture);
-fluidSimulator.spawnParticles(300); // 300 partículas para empezar
+function drawContainer() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const margin = w * fluidSimulator.containerMarginRatio;
+
+    containerGraphic.clear();
+    containerGraphic.setStrokeStyle({ width: 2, color: 0x445566, alpha: 0.8 });
+    // Pared izquierda
+    containerGraphic.moveTo(margin, 0);
+    containerGraphic.lineTo(margin, h);
+    // Pared derecha
+    containerGraphic.moveTo(w - margin, 0);
+    containerGraphic.lineTo(w - margin, h);
+    containerGraphic.stroke();
+
+    // Obstáculo central (mismo radio que en resolveBoundaries)
+    containerGraphic.setStrokeStyle({ width: 2, color: 0x445566, alpha: 0.8 });
+    containerGraphic.circle(w / 2, h / 2, 80);
+    containerGraphic.stroke();
+}
+drawContainer();
+window.addEventListener("resize", drawContainer);
 
 // Bucle de juego
 app.ticker.add(() => {
@@ -151,6 +200,10 @@ document.getElementById("particleCount").addEventListener("change", (e) => {
     fluidSimulator.respawn(Number(e.target.value));
 });
 
+document.getElementById("useHash").addEventListener("change", (e) => {
+    fluidSimulator.useSpatialHash = e.target.checked;
+});
+
 document.getElementById("respawnBtn").addEventListener("click", () => {
     fluidSimulator.respawn(fluidSimulator.particles.length);
 });
@@ -165,5 +218,17 @@ pauseBtn.addEventListener("click", () => {
     } else {
         app.ticker.start();
         pauseBtn.textContent = "Pausar";
+    }
+});
+
+blurInput.addEventListener("input", (e) => {
+    const val = Number(e.target.value);
+    blurLabel.textContent = val;
+
+    if (val === 0) {
+        fluidContainer.filters = []; // Apaga el filtro, vuelven los colores
+    } else {
+        blurFilter.strength = val;
+        fluidContainer.filters = [blurFilter, colorMatrix]; // Enciende el efecto agua
     }
 });

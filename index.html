@@ -90,9 +90,36 @@
                 border-radius: 4px;
                 background: linear-gradient(to right, #3399ff, #ff4444);
             }
+
+            #panel-cambiar {
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                background: rgba(20, 20, 25, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 14px 16px;
+                color: #eee;
+                backdrop-filter: blur(4px);
+                z-index: 10;
+            }
+
+            #panel-cambiar a {
+                color: #66ccff;
+                text-decoration: none;
+                font-size: 13px;
+            }
         </style>
     </head>
     <body>
+        <div id="panel-cambiar">
+            <a href="liquidfun_demo.html" id="cambiarBtn"
+                >Cambiar a LiquidFun Demo</a
+            >
+            <br />
+            <a href="ragdoll-demo/index.html">Ragdoll + agua</a>
+        </div>
+
         <div id="panel">
             <h3>Parámetros SPH</h3>
 
@@ -108,13 +135,13 @@
                 <b> Densidad de reposo </b>(Limite de densidad para repeler)
                 <span id="densityVal"></span
             ></label>
-            <input type="range" id="density" min="0.1" max="3" step="0.1" />
+            <input type="range" id="density" min="0.2" max="7" step="0.1" />
 
             <label>
                 <b> Multiplicador de presión </b>(Fuerza de repulsión)
                 <span id="pressureVal"></span
             ></label>
-            <input type="range" id="pressure" min="0" max="50" step="1" />
+            <input type="range" id="pressure" min="0" max="2000" step="10" />
 
             <label>
                 <b> Viscosidad </b>(Agrupacion de partículas)<span
@@ -130,9 +157,25 @@
                 type="range"
                 id="particleCount"
                 min="50"
-                max="800"
+                max="2000"
                 step="50"
             />
+
+            <label>Efecto Metaball (Blur) <span id="blurVal"></span></label>
+            <input
+                type="range"
+                id="blurSlider"
+                min="0"
+                max="20"
+                step="1"
+                value="0"
+            />
+
+            <label
+                >Spatial Hashing (Optimización)
+                <input type="checkbox" id="useHash" checked
+            /></label>
+            <label>Ver Grilla <input type="checkbox" id="debugGrid" /></label>
 
             <label>Ver Radar <input type="checkbox" id="debugRadar" /></label>
 

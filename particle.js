@@ -1,6 +1,5 @@
-// particle.js
 export class Particle {
-    constructor(x, y, texture, stage) {
+    constructor(x, y, texture, stage, debugContainer) {
         // Datos Físicos (Lógica Lagrangiana)
         this.position = new PIXI.Point(x, y);
         this.velocity = new PIXI.Point(0, 0);
@@ -18,7 +17,7 @@ export class Particle {
         stage.addChild(this.sprite);
 
         this.radarGraphic = new PIXI.Graphics();
-        stage.addChild(this.radarGraphic);
+        debugContainer.addChild(this.radarGraphic);
         this.radarGraphic.visible = false;
     }
 
